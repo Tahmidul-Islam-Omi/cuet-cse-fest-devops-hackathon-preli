@@ -1,8 +1,13 @@
+# Default docker-compose file (development mode)
+# For production, use: docker-compose -f docker/compose.production.yaml up
+
 services:
   mongo:
     image: mongo:7.0
     container_name: dev-mongo
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
@@ -21,21 +26,20 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile.dev
     container_name: dev-backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: ${NODE_ENV}
       MONGO_URI: ${MONGO_URI}
       MONGO_DATABASE: ${MONGO_DATABASE}
       BACKEND_PORT: ${BACKEND_PORT}
-    # Port NOT exposed to host - only accessible via gateway (security)
-    # ports:
-    #   - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
-      - ../backend/src:/app/src
-      - ../backend/package.json:/app/package.json
+      - ./backend/src:/app/src
+      - ./backend/package.json:/app/package.json
       - backend-node-modules:/app/node_modules
     networks:
       - app-network
@@ -46,10 +50,12 @@ services:
 
   gateway:
     build:
-      context: ../gateway
+      context: ./gateway
       dockerfile: Dockerfile.dev
     container_name: dev-gateway
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: ${NODE_ENV}
       GATEWAY_PORT: ${GATEWAY_PORT}
@@ -57,8 +63,8 @@ services:
     ports:
       - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     volumes:
-      - ../gateway/src:/app/src
-      - ../gateway/package.json:/app/package.json
+      - ./gateway/src:/app/src
+      - ./gateway/package.json:/app/package.json
       - gateway-node-modules:/app/node_modules
     networks:
       - app-network

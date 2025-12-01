@@ -1,6 +1,81 @@
-# services:
-  # backend:
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: prod-mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data-prod:/data/db
+    env_file:
+      - ../.env
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # gateway:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: prod-backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DATABASE: ${MONGO_DATABASE}
+      BACKEND_PORT: ${BACKEND_PORT}
+    # Port NOT exposed to host - only accessible via gateway (security)
+    # ports:
+    #   - "${BACKEND_PORT}:3000"
+    networks:
+      - app-network
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # mongo:
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    container_name: prod-gateway
+    restart: always
+    environment:
+      NODE_ENV: production
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      BACKEND_URL: http://backend:3000
+    ports:
+      - "${GATEWAY_PORT}:8080"
+    networks:
+      - app-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mongo-data-prod:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
