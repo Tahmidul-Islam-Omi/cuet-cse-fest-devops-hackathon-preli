@@ -1,5 +1,4 @@
 # Development Dockerfile for Gateway
-# Optimized for fast rebuilds and hot-reloading
 
 FROM node:20-alpine
 

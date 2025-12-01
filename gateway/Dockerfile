@@ -1,5 +1,4 @@
 # Production Dockerfile for Gateway
-# Multi-stage build for optimized image size
 
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
