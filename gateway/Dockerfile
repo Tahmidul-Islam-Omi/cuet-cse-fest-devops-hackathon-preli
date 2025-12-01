@@ -29,8 +29,7 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy dependencies from deps stage
 COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 
-# Copy application source code
-COPY --chown=nodejs:nodejs package*.json ./
+# Copy application source code (no package.json needed)
 COPY --chown=nodejs:nodejs src ./src
 
 # Switch to non-root user
@@ -43,5 +42,5 @@ EXPOSE 5921
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
     CMD node -e "require('http').get('http://localhost:5921/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start production server
-CMD ["npm", "start"]
+# Start production server directly with node (no npm)
+CMD ["node", "src/gateway.js"]

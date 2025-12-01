@@ -22,7 +22,17 @@ RUN npm run build
 # Remove devDependencies to reduce size
 RUN npm prune --production
 
-# Stage 2: Production Runner
+# Stage 2: Dependencies
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Copy package files and install production dependencies only
+COPY package*.json ./
+RUN npm install --only=production && \
+    npm cache clean --force
+
+# Stage 3: Production Runner
 FROM node:20-alpine AS runner
 
 # Set NODE_ENV to production
@@ -35,10 +45,8 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy package files and install production dependencies only
-COPY --chown=nodejs:nodejs package*.json ./
-RUN npm install --only=production && \
-    npm cache clean --force
+# Copy production dependencies from deps stage
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 # Copy built application from builder
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
@@ -53,5 +61,5 @@ EXPOSE 3847
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3847/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start production server
-CMD ["npm", "start"]
+# Start production server directly with node (no npm)
+CMD ["node", "dist/index.js"]
